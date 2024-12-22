@@ -1,46 +1,77 @@
+from django.contrib.auth.backends import ModelBackend
+from .models import Account
 from django import forms
-from django.contrib.auth.models import User
+from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django.core.exceptions import ValidationError
 
+class EmailorUsernameBackend(ModelBackend):
+    def authenticate(self,request,username=None,password=None):
+        if username is None:
+            print("username is None")
+            return None
+            
+        try:
+            if '@' in username:
+                #login with email
+                user = Account.objects.get(email = username)
+            else:
+                #login with username
+                user = Account.objects.get(username = username)
+        except Account.DoesNotExist:
+            print("Account is not exist")
+            return None
+            
+        if user.check_password(password):
+            return user
+            
+        print("Incorrect Password")
+        return None
 
-class LoginForm(forms.Form):
-    username = forms.CharField()
-    password = forms.CharField(widget=forms.PasswordInput)
-
-def ForbiddenUsers(value):
-    forbidden_users = ['admin', 'css', 'js', 'authenticate', 'login', 'logout', 'administrator', 'root','email', 'user', 'join', 'sql', 
-        'static', 'python', 'delete','profile','donate','home','emotional-phases','life-phases','achievements','article','search',
-        'write-feedback','user-notifications','register','login','password-reset']
-    if value.lower() in forbidden_users:
-        raise ValidationError('Invalid name for user, this is a reserverd word.')
-
-def InvalidUser(value):
-    if '@' in value or '+' in value or '-' in value:
-        raise ValidationError('This is an Invalid user, Do not user these chars: @ , - , + ')
-
-
-def UniqueUser(value):
-    if User.objects.filter(username__iexact=value).exists():
-        raise ValidationError('User with this username already exists.')
-
-class UserRegistrationForm(forms.ModelForm):
-    password = forms.CharField(label='Password',
-                               widget=forms.PasswordInput)
-    password2 = forms.CharField(label='Repeat password',
-                                widget=forms.PasswordInput)
+#https://docs.djangoproject.com/en/5.1/topics/auth/customizing/
+class UserCreationForm(forms.ModelForm):
+    password1 = forms.CharField(label = 'Password',widget=forms.PasswordInput)
+    password2 = forms.CharField(
+    label="Password confirmation", widget=forms.PasswordInput
+    )
 
     class Meta:
-        model = User
-        fields = ('username', 'first_name', 'email')
-
-    def __init__(self, *args, **kwargs):
-        super(UserRegistrationForm, self).__init__(*args, **kwargs)
-        self.fields['username'].validators.append(ForbiddenUsers)
-        self.fields['username'].validators.append(InvalidUser)
-        self.fields['username'].validators.append(UniqueUser)
-
+        model = Account
+        fields = ['email','username','Fname','Lname','Mname','Address','dob','department','Gender','role']
+        
     def clean_password2(self):
-        cd = self.cleaned_data
-        if cd['password'] != cd['password2']:
-            raise forms.ValidationError('Passwords don\'t match.')
-        return cd['password2']
+        # Check that the two password entries match
+        password1 = self.cleaned_data.get("password")
+        password2 = self.cleaned_data.get("confirmPassword")
+        if password1 and password2 and password1 != password2:
+            raise ValidationError("Passwords don't match")
+        return password2
+        
+    def save(self, commit=True):
+        # Save the provided password in hashed format
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data["password"])
+        if commit:
+            user.save()
+        return user
+        
+class LoginForm(forms.ModelForm):
+    username_or_email = forms.CharField(max_length=254,label = "Username or Email")
+    password = forms.CharField(widget=forms.PasswordInput)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        username_or_email = cleaned_data.get('username_or_email')
+        password = cleaned_data.get("password")
+        if not username_or_email:
+            raise ValidationError("Incorrect Username / Email")
+        if not password:
+            raise ValidationError("Incorrect Password")
+
+        return cleaned_data  
+
+class UserChangeForm(forms.ModelForm):
+    password = ReadOnlyPasswordHashField()
+    class Meta:
+        model = Account
+        fields = ['email', 'username', 'Fname', 'Lname', 'Mname', 'Address', 'dob', 'department', 'Gender', 'is_active', 'is_admin']
+    
