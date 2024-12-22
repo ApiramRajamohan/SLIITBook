@@ -1,50 +1,26 @@
-from django.contrib.auth.backends import ModelBackend
 from .models import Account
 from django import forms
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django.core.exceptions import ValidationError
 
-class EmailorUsernameBackend(ModelBackend):
-    def authenticate(self,request,username=None,password=None):
-        if username is None:
-            print("username is None")
-            return None
-            
-        try:
-            if '@' in username:
-                #login with email
-                user = Account.objects.get(email = username)
-            else:
-                #login with username
-                user = Account.objects.get(username = username)
-        except Account.DoesNotExist:
-            print("Account is not exist")
-            return None
-            
-        if user.check_password(password):
-            return user
-            
-        print("Incorrect Password")
-        return None
 
 #https://docs.djangoproject.com/en/5.1/topics/auth/customizing/
 class UserCreationForm(forms.ModelForm):
-    password1 = forms.CharField(label = 'Password',widget=forms.PasswordInput)
-    password2 = forms.CharField(
-    label="Password confirmation", widget=forms.PasswordInput
+    password = forms.CharField(label = 'Password',widget=forms.PasswordInput)
+    confirmPassword = forms.CharField(
+        label="Password confirmation", widget=forms.PasswordInput
     )
-
     class Meta:
         model = Account
         fields = ['email','username','Fname','Lname','Mname','Address','dob','department','Gender','role']
         
     def clean_password2(self):
         # Check that the two password entries match
-        password1 = self.cleaned_data.get("password")
-        password2 = self.cleaned_data.get("confirmPassword")
-        if password1 and password2 and password1 != password2:
+        password = self.cleaned_data.get("password")
+        confirmPassword = self.cleaned_data.get("confirmPassword")
+        if password and confirmPassword and password != confirmPassword:
             raise ValidationError("Passwords don't match")
-        return password2
+        return confirmPassword
         
     def save(self, commit=True):
         # Save the provided password in hashed format

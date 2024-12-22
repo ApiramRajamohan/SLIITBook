@@ -36,7 +36,7 @@ AUTH_USER_MODEL = 'Accounts.Account' #Custom usermodel
 #Custom Backends
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',  # Default Django backend (allows admin login)
-    'Accounts.forms.py.EmailOrUsernameBackend',  # Custom backend for email/username login
+    'Accounts.backends.EmailOrUsernameBackend',  # Custom backend for email/username login
 )
 
 #CORS

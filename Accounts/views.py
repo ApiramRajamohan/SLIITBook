@@ -1,10 +1,11 @@
 from django.shortcuts import render,redirect
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.backends import ModelBackend
 from django.core.mail import send_mail
 from django.http import JsonResponse
 from .forms import UserCreationForm,LoginForm
-from django.contrib.auth import authenticate,login,logout
+from django.contrib.auth import login,logout
 from random import randint
 import msal
 from django.conf import settings
@@ -13,7 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Account
 from django.core.cache import cache
 import json
-
+from .backends import EmailorUsernameBackend
 
 # def MS_Auth(request):
 #     app = msal.ConfidentialClientApplication(
@@ -72,20 +73,25 @@ def Register(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         user_form = UserCreationForm(data)
+        for x in data:
+            print(x,data.get(x))
         if user_form.is_valid():
             # Create a new user object but avoid saving it yet
             new_user = user_form.save()
             new_user.set_password(user_form.cleaned_data['password'])
             #Now save the user  
             new_user.save()
-            log_user = authenticate(username=user_form.cleaned_data['username'], password=user_form.cleaned_data['password'])
+            backend = EmailorUsernameBackend()
+            log_user = backend.authenticate(request,username=user_form.cleaned_data['username'], password=user_form.cleaned_data['password'])
             if log_user is not None:
                 #Backend authenticated the credientials
+                log_user.backend = 'django.contrib.auth.backends.ModelBackend'
                 login(request, log_user)
                 return JsonResponse({'status': 'success'})
             else:
                 return JsonResponse({'status': 'error', 'message': 'Invalid username/email or password'}, status=401)
         else:
+            print(user_form.errors)
             return JsonResponse({'status': 'error', 'message': 'Invalid form'}, status=401)
             #error message has to be sent
     else:
@@ -129,7 +135,7 @@ def Login(request):
             username_or_email = form.cleaned_data['username_or_email']
             password = form.cleaned_data['password']
             #authenticate using custom backend
-            user = authenticate(request,username = username_or_email,password=password)
+            user = EmailorUsernameBackend.authenticate(request,username = username_or_email,password=password)
             if user is not None:
                 login(request,user)
                 return JsonResponse({'status':'success'})
