@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import environ
 import os
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
@@ -29,8 +28,27 @@ SECRET_KEY = env("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
+#Auth model
+AUTH_USER_MODEL = 'Accounts.Account' #Custom usermodel
+
+#Custom Backends
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',  # Default Django backend (allows admin login)
+    'Accounts.forms.py.EmailOrUsernameBackend',  # Custom backend for email/username login
+)
+
+#CORS
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:4200",  # Angular dev server
+]
+
+#Microsoft Authentication
+# MICROSOFT_CLIENT_ID = env("client_id")  # Application (client) ID from Azure portal
+# MICROSOFT_CLIENT_SECRET = env("client_secret")  # Application secret from Azure portal
+# MICROSOFT_TENANT_ID = env("tenent_id")  # Directory (tenant) ID from Azure portal
+# MICROSOFT_REDIRECT_URI = env("redirect_url")  # Callback URL in Django
 
 # Application definition
 
@@ -41,7 +59,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'Accounts'
+    'Accounts',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -52,6 +71,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'SLIITBook.urls'
@@ -59,7 +79,7 @@ ROOT_URLCONF = 'SLIITBook.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR,'Templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -130,3 +150,13 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGIN_URL = '/Accounts/login'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # Gmail's SMTP server
+EMAIL_PORT = 587  # Port for TLS
+EMAIL_USE_TLS = True  # Use TLS for encryption
+EMAIL_HOST_USER = 'sliitbook@gmail.com'  # Your Gmail address
+EMAIL_HOST_PASSWORD = 'secq ixwi ahgp xnul'
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
